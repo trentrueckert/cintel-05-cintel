@@ -61,9 +61,17 @@ def reactive_calc_combined():
     reactive.invalidate_later(UPDATE_INTERVAL_SECS)
 
     # Data generation logic
-    temp = round(random.uniform(-18, -16), 1)
+    temp_celsius = round(random.uniform(-18, -16), 1)
+    temp_fahrenheit = (temp_celsius * 9/5) + 32 # Convert to Fahrenheit
+    temp_kelvin = temp_celsius + 273.15 # Convert to Kelvin
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    new_dictionary_entry = {"temp":temp, "timestamp":timestamp}
+
+    new_dictionary_entry = {
+        "temp_celsius": temp_celsius,
+        "temp_fahrenheit": temp_fahrenheit,
+        "temp_kelvin": temp_kelvin,
+        "timestamp": timestamp
+    }
 
     # get the deque and append the new entry
     reactive_value_wrapper.get().append(new_dictionary_entry)
@@ -80,8 +88,6 @@ def reactive_calc_combined():
     # Return a tuple with everything we need
     # Every time we call this function, we'll get all these values
     return deque_snapshot, df, latest_dictionary_entry
-
-
 
 
 # Define the Shiny UI Page layout
@@ -131,13 +137,26 @@ with ui.layout_columns():
 
         @render.text
         def display_temp():
-            """Get the latest reading and return a temperature string"""
+            """Get the latest reading and return temperature in Celsius, Fahrenheit, and Kelvin with dynamic message"""
             deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
-            return f"{latest_dictionary_entry['temp']} C"
+            celsius = latest_dictionary_entry['temp_celsius']
+            fahrenheit = latest_dictionary_entry['temp_fahrenheit']
+            kelvin = latest_dictionary_entry['temp_kelvin']
 
-        "warmer than usual"
+            # Define the threshold temperature in Celsius (e.g., -17°C is the threshold for "warmer")
+            threshold = -17
+    
+            # Determine if the temperature is warmer than usual
+            if celsius > threshold:
+                temp_message = "warmer than usual"
+            else:
+                temp_message = "colder than usual"
 
-  
+            return (f"Celsius: {celsius}°C\n"
+                    f"Fahrenheit: {fahrenheit}°F\n"
+                    f"Kelvin: {kelvin}K"
+                    f"{temp_message}")
+
 
     with ui.card(full_screen=True):
         ui.card_header("Current Date and Time")
@@ -158,6 +177,10 @@ with ui.card(full_screen=True):
         """Get the latest reading and return a dataframe with current readings"""
         deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
         pd.set_option('display.width', None)        # Use maximum width
+        # Add the temperature columns
+        df['temp_fahrenheit'] = df['temp_celsius'] * 9 / 5 + 32
+        df['temp_kelvin'] = df['temp_celsius'] + 273.15
+
         return render.DataGrid( df,width="100%")
 
 with ui.card():
@@ -179,10 +202,14 @@ with ui.card():
         
             fig = px.scatter(df,
             x="timestamp",
-            y="temp",
+            y="temp_celsius",
             title="Temperature Readings with Regression Line",
-            labels={"temp": "Temperature (°C)", "timestamp": "Time"},
+            labels={"temp_celsius": "Temperature (°C)", "timestamp": "Time"},
             color_discrete_sequence=["blue"] )
+
+            # Add plots for Fahrenheit and Kelvin
+            fig.add_scatter(x=df["timestamp"], y=df['temp_fahrenheit'], mode='lines', name="Fahrenheit", line=dict(dash="dot"))
+            fig.add_scatter(x=df["timestamp"], y=df['temp_kelvin'], mode='lines', name="Kelvin", line=dict(dash="dash"))
             
             # Linear regression - we need to get a list of the
             # Independent variable x values (time) and the
@@ -192,7 +219,7 @@ with ui.card():
             # For x let's generate a sequence of integers from 0 to len(df)
             sequence = range(len(df))
             x_vals = list(sequence)
-            y_vals = df["temp"]
+            y_vals = df["temp_celsius"]
 
             slope, intercept, r_value, p_value, std_err = stats.linregress(x_vals, y_vals)
             df['best_fit_line'] = [slope * x + intercept for x in x_vals]
@@ -201,6 +228,6 @@ with ui.card():
             fig.add_scatter(x=df["timestamp"], y=df['best_fit_line'], mode='lines', name='Regression Line')
 
             # Update layout as needed to customize further
-            fig.update_layout(xaxis_title="Time",yaxis_title="Temperature (°C)")
+            fig.update_layout(xaxis_title="Time", yaxis_title="Temperature (°C, °F, K)")
 
         return fig
