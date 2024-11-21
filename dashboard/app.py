@@ -6,7 +6,7 @@
 from shiny import reactive, render
 
 # From shiny.express, import just ui and inputs if needed
-from shiny.express import ui
+from shiny.express import input, ui
 
 import random
 from datetime import datetime
@@ -106,6 +106,12 @@ with ui.sidebar(open="open"):
         "A demonstration of real-time temperature readings in Antarctica.",
         class_="text-center",
     )
+
+    # Use input_radio_buttons for temperature unit selection, adding Kelvin as an option
+    ui.input_radio_buttons("temp_unit", 
+                            label="Choose temperature unit", 
+                            choices=["Celsius", "Fahrenheit", "Kelvin"], 
+                            selected="Celsius")
     ui.hr()
     ui.h6("Links:")
     ui.a(
@@ -131,17 +137,31 @@ with ui.layout_columns():
     with ui.value_box(
         showcase=icon_svg("thermometer"),
         theme="bg-gradient-blue-purple",
-    ):
-
-        "Current Temperature"
+    )
 
         @render.text
         def display_temp():
             """Get the latest reading and return temperature in Celsius, Fahrenheit, and Kelvin with dynamic message"""
             deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+
+            # Get the selected temperature unit
+            selected_unit = input.temp_unit()
+
+            # Fetch the temperature in each unit
             celsius = latest_dictionary_entry['temp_celsius']
             fahrenheit = latest_dictionary_entry['temp_fahrenheit']
             kelvin = latest_dictionary_entry['temp_kelvin']
+
+            # Logic to display the selected temperature unit
+            if selected_unit == "Celsius":
+                temp_value = celsius
+                unit = "°C"
+            elif selected_unit == "Fahrenheit":
+                temp_value = fahrenheit
+                unit = "°F"
+            else:  # "Kelvin"
+                temp_value = kelvin
+                unit = "K"
 
             # Define the threshold temperature in Celsius (e.g., -17°C is the threshold for "warmer")
             threshold = -17
@@ -152,9 +172,8 @@ with ui.layout_columns():
             else:
                 temp_message = "colder than usual"
 
-            return (f"Celsius: {celsius}°C\n"
-                    f"Fahrenheit: {fahrenheit}°F\n"
-                    f"Kelvin: {kelvin}K"
+            # Return the formatted temperature display
+            return (f"Current Temperature: {temp_value}{unit}\n"
                     f"{temp_message}")
 
 
@@ -177,11 +196,17 @@ with ui.card(full_screen=True):
         """Get the latest reading and return a dataframe with current readings"""
         deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
         pd.set_option('display.width', None)        # Use maximum width
+
         # Add the temperature columns
         df['temp_fahrenheit'] = df['temp_celsius'] * 9 / 5 + 32
         df['temp_kelvin'] = df['temp_celsius'] + 273.15
 
-        return render.DataGrid( df,width="100%")
+        # Round the values
+        df['temp_celsius'] = df['temp_celsius'].round(1)
+        df['temp_fahrenheit'] = df['temp_fahrenheit'].round(1)
+        df['temp_kelvin'] = df['temp_kelvin'].round(1)
+
+        return render.DataGrid(df,width="100%")
 
 with ui.card():
     ui.card_header("Chart with Current Trend")
@@ -206,10 +231,6 @@ with ui.card():
             title="Temperature Readings with Regression Line",
             labels={"temp_celsius": "Temperature (°C)", "timestamp": "Time"},
             color_discrete_sequence=["blue"] )
-
-            # Add plots for Fahrenheit and Kelvin
-            fig.add_scatter(x=df["timestamp"], y=df['temp_fahrenheit'], mode='lines', name="Fahrenheit", line=dict(dash="dot"))
-            fig.add_scatter(x=df["timestamp"], y=df['temp_kelvin'], mode='lines', name="Kelvin", line=dict(dash="dash"))
             
             # Linear regression - we need to get a list of the
             # Independent variable x values (time) and the
