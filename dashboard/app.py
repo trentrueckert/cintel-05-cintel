@@ -62,8 +62,8 @@ def reactive_calc_combined():
 
     # Data generation logic
     temp_celsius = round(random.uniform(-18, -16), 1)
-    temp_fahrenheit = (temp_celsius * 9/5) + 32 # Convert to Fahrenheit
-    temp_kelvin = temp_celsius + 273.15 # Convert to Kelvin
+    temp_fahrenheit = round((temp_celsius * 9/5) + 32, 1) # Convert to Fahrenheit
+    temp_kelvin = round(temp_celsius + 273.15, 1) # Convert to Kelvin
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     new_dictionary_entry = {
