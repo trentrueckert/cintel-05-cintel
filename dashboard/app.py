@@ -142,6 +142,7 @@ with ui.navset_card_tab(id="tab"):
 
 
         with ui.value_box( 
+            showcase=icon_svg("clock"),
             theme="bg-gradient-red-orange"
         ):
             "Current Date and Time"
