@@ -1,11 +1,11 @@
 # --------------------------------------------
-# Imports at the top - PyShiny EXPRESS VERSION
+# Imports - PyShiny EXPRESS VERSION
 # --------------------------------------------
 
 # From shiny, import just reactive and render
 from shiny import reactive, render
 
-# From shiny.express, import just ui and inputs if needed
+# From shiny.express, import just ui and inputs 
 from shiny.express import input, ui
 
 import random
@@ -16,44 +16,13 @@ import plotly.express as px
 from shinywidgets import render_plotly
 from scipy import stats
 
-# --------------------------------------------
-# Import icons as you like
-# --------------------------------------------
-
 # https://fontawesome.com/v4/cheatsheet/
 from faicons import icon_svg
 
-# --------------------------------------------
-# Shiny EXPRESS VERSION
-# --------------------------------------------
-
-# --------------------------------------------
-# First, set a constant UPDATE INTERVAL for all live data
-# Constants are usually defined in uppercase letters
-# Use a type hint to make it clear that it's an integer (: int)
-# --------------------------------------------
-
 UPDATE_INTERVAL_SECS: int = 3
-
-# --------------------------------------------
-# Initialize a REACTIVE VALUE with a common data structure
-# The reactive value is used to store state (information)
-# Used by all the display components that show this live data.
-# This reactive value is a wrapper around a DEQUE of readings
-# --------------------------------------------
 
 DEQUE_SIZE: int = 5
 reactive_value_wrapper = reactive.value(deque(maxlen=DEQUE_SIZE))
-
-# --------------------------------------------
-# Initialize a REACTIVE CALC that all display components can call
-# to get the latest data and display it.
-# The calculation is invalidated every UPDATE_INTERVAL_SECS
-# to trigger updates.
-# It returns a tuple with everything needed to display the data.
-# Very easy to expand or modify.
-# --------------------------------------------
-
 
 @reactive.calc()
 def reactive_calc_combined():
@@ -125,90 +94,85 @@ with ui.sidebar(open="open"):
         target="_blank",
     )
 
-# In Shiny Express, everything not in the sidebar is in the main panel
+# Main content
 
-with ui.layout_columns():
-    with ui.value_box(
-        showcase=icon_svg("thermometer"),
-        theme="bg-gradient-blue-purple",
-    ): 
-        "Current Temperature"
+with ui.navset_card_tab(id="tab"):
+    with ui.nav_panel("Live Data"):
+        with ui.value_box(
+            showcase=icon_svg("thermometer"),
+            theme="bg-gradient-blue-purple"
+        ): 
+            "Current Temperature"
 
-        @render.text
-        def display_temp():
-            """Get the latest reading and return temperature in Celsius, Fahrenheit, and Kelvin with dynamic message"""
-            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+            @render.text
+            def display_temp():
+                """Get the latest reading and return temperature in Celsius, Fahrenheit, and Kelvin with dynamic message"""
+                deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
 
-            # Get the selected temperature unit
-            selected_unit = input.temp_unit()
+                # Get the selected temperature unit
+                selected_unit = input.temp_unit()
 
-            # Fetch the temperature in each unit
-            celsius = latest_dictionary_entry['temp_celsius']
-            fahrenheit = latest_dictionary_entry['temp_fahrenheit']
-            kelvin = latest_dictionary_entry['temp_kelvin']
+                # Fetch the temperature in each unit
+                celsius = latest_dictionary_entry['temp_celsius']
+                fahrenheit = latest_dictionary_entry['temp_fahrenheit']
+                kelvin = latest_dictionary_entry['temp_kelvin']
 
-            # Logic to display the selected temperature unit
-            if selected_unit == "Celsius":
-                temp_value = celsius
-                unit = "°C"
-            elif selected_unit == "Fahrenheit":
-                temp_value = fahrenheit
-                unit = "°F"
-            else:  # "Kelvin"
-                temp_value = kelvin
-                unit = "K"
+                # Logic to display the selected temperature unit
+                if selected_unit == "Celsius":
+                    temp_value = celsius
+                    unit = "°C"
+                elif selected_unit == "Fahrenheit":
+                    temp_value = fahrenheit
+                    unit = "°F"
+                else:  # "Kelvin"
+                    temp_value = kelvin
+                    unit = "K"
 
-            # Define the threshold temperature in Celsius (e.g., -17°C is the threshold for "warmer")
-            threshold = -17
+                # Define the threshold temperature in Celsius (e.g., -17°C is the threshold for "warmer")
+                threshold = -17
     
-            # Determine if the temperature is warmer than usual
-            if celsius > threshold:
-                temp_message = "warmer than usual"
-            else:
-                temp_message = "colder than usual"
+                # Determine if the temperature is warmer than usual
+                if celsius > threshold:
+                    temp_message = "It is warmer than usual"
+                else:
+                    temp_message = "It is colder than usual"
 
-            # Return the formatted temperature display
-            return (f"Current Temperature: {temp_value}{unit}\n"
-                    f"{temp_message}")
-
-
-    with ui.value_box( 
-        theme="bg-gradient-red-orange"
-    ):
-        "Current Date and Time"
-
-        @render.text
-        def display_time():
-            """Get the latest reading and return a timestamp string"""
-            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
-            return f"{latest_dictionary_entry['timestamp']}"
+                # Return the formatted temperature display
+                return f"{temp_value}{unit}. {temp_message}"
 
 
-with ui.layout_columns():
-    with ui.card(height='250px'):
-        ui.card_header("Most Recent Readings")
+        with ui.value_box( 
+            theme="bg-gradient-red-orange"
+        ):
+            "Current Date and Time"
 
-        @render.data_frame
-        def display_df():
-            """Get the latest reading and return a dataframe with current readings"""
-            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
-            pd.set_option('display.width', None)        # Use maximum width
+            @render.text
+            def display_time():
+                """Get the latest reading and return a timestamp string"""
+                deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+                return f"{latest_dictionary_entry['timestamp']}"
 
-            # Add the temperature columns
-            df['temp_fahrenheit'] = df['temp_celsius'] * 9 / 5 + 32
-            df['temp_kelvin'] = df['temp_celsius'] + 273.15
+        with ui.card(width="48%", height=500):
+            ui.card_header("Most Recent Readings")
 
-            # Round the values
-            df['temp_celsius'] = df['temp_celsius'].round(1)
-            df['temp_fahrenheit'] = df['temp_fahrenheit'].round(1)
-            df['temp_kelvin'] = df['temp_kelvin'].round(1)
+            @render.data_frame
+            def display_df():
+                """Get the latest reading and return a dataframe with current readings"""
+                deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+                pd.set_option('display.width', None)        # Use maximum width
 
-            return render.DataGrid(df,width="100%")
+                # Add the temperature columns
+                df['temp_fahrenheit'] = df['temp_celsius'] * 9 / 5 + 32
+                df['temp_kelvin'] = df['temp_celsius'] + 273.15
 
-with ui.layout_columns():
-    with ui.card(height='600px'):
-        ui.card_header("Chart with Current Trend")
+                # Round the values
+                df['temp_celsius'] = df['temp_celsius'].round(1)
+                df['temp_fahrenheit'] = df['temp_fahrenheit'].round(1)
+                df['temp_kelvin'] = df['temp_kelvin'].round(1)
 
+                return render.DataGrid(df,width="100%")
+
+    with ui.nav_panel("Temperature Readings Plot")
         @render_plotly
         def display_plot():
             # Fetch from the reactive calc function
@@ -223,6 +187,7 @@ with ui.layout_columns():
                 x="timestamp",
                 y="temp_celsius",
                 title="Temperature Readings with Regression Line",
+                height = 500,
                 labels={"temp_celsius": "Temperature (°C)", "timestamp": "Time"},
                 color_discrete_sequence=["blue"] )
 
@@ -238,6 +203,10 @@ with ui.layout_columns():
                 fig.add_scatter(x=df["timestamp"], y=df['best_fit_line'], mode='lines', name='Regression Line')
 
                 # Update layout as needed to customize further
-                fig.update_layout(xaxis_title="Time", yaxis_title="Temperature (°C, °F, K)")
+                fig.update_layout(title="Temperature Readings with Regression Line",
+                                  xaxis_title="Time", 
+                                  yaxis_title="Temperature (°C, °F, K)",
+                                  height=500,  # Fixed height for the plot
+                                  )
 
             return fig
