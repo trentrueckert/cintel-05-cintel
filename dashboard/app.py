@@ -16,6 +16,7 @@ import plotly.express as px
 from shinywidgets import render_plotly
 from scipy import stats
 
+# Add cool icons
 # https://fontawesome.com/v4/cheatsheet/
 from faicons import icon_svg
 
