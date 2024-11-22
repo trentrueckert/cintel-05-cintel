@@ -86,19 +86,13 @@ def reactive_calc_combined():
     latest_dictionary_entry = new_dictionary_entry
 
     # Return a tuple with everything we need
-    # Every time we call this function, we'll get all these values
     return deque_snapshot, df, latest_dictionary_entry
 
 
 # Define the Shiny UI Page layout
-# Call the ui.page_opts() function
-# Set title to a string in quotes that will appear at the top
-# Set fillable to True to use the whole page width for the UI
 ui.page_opts(title="PyShiny Express: Live Data Example", fillable=True)
 
-# Sidebar is typically used for user interaction/information
-# Note the with statement to create the sidebar followed by a colon
-# Everything in the sidebar is indented consistently
+# Define the sidebar
 with ui.sidebar(open="open"):
 
     ui.h2("Antarctic Explorer", class_="text-center")
@@ -137,7 +131,8 @@ with ui.layout_columns():
     with ui.value_box(
         showcase=icon_svg("thermometer"),
         theme="bg-gradient-blue-purple",
-    )
+    ): 
+        "Current Temperature"
 
         @render.text
         def display_temp():
@@ -177,8 +172,10 @@ with ui.layout_columns():
                     f"{temp_message}")
 
 
-    with ui.card(full_screen=True):
-        ui.card_header("Current Date and Time")
+    with ui.value_box( 
+        theme="bg-gradient-red-orange"
+    ):
+        "Current Date and Time"
 
         @render.text
         def display_time():
@@ -187,68 +184,60 @@ with ui.layout_columns():
             return f"{latest_dictionary_entry['timestamp']}"
 
 
-#with ui.card(full_screen=True, min_height="40%"):
-with ui.card(full_screen=True):
-    ui.card_header("Most Recent Readings")
+with ui.layout_columns():
+    with ui.card(height='250px'):
+        ui.card_header("Most Recent Readings")
 
-    @render.data_frame
-    def display_df():
-        """Get the latest reading and return a dataframe with current readings"""
-        deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
-        pd.set_option('display.width', None)        # Use maximum width
+        @render.data_frame
+        def display_df():
+            """Get the latest reading and return a dataframe with current readings"""
+            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+            pd.set_option('display.width', None)        # Use maximum width
 
-        # Add the temperature columns
-        df['temp_fahrenheit'] = df['temp_celsius'] * 9 / 5 + 32
-        df['temp_kelvin'] = df['temp_celsius'] + 273.15
+            # Add the temperature columns
+            df['temp_fahrenheit'] = df['temp_celsius'] * 9 / 5 + 32
+            df['temp_kelvin'] = df['temp_celsius'] + 273.15
 
-        # Round the values
-        df['temp_celsius'] = df['temp_celsius'].round(1)
-        df['temp_fahrenheit'] = df['temp_fahrenheit'].round(1)
-        df['temp_kelvin'] = df['temp_kelvin'].round(1)
+            # Round the values
+            df['temp_celsius'] = df['temp_celsius'].round(1)
+            df['temp_fahrenheit'] = df['temp_fahrenheit'].round(1)
+            df['temp_kelvin'] = df['temp_kelvin'].round(1)
 
-        return render.DataGrid(df,width="100%")
+            return render.DataGrid(df,width="100%")
 
-with ui.card():
-    ui.card_header("Chart with Current Trend")
+with ui.layout_columns():
+    with ui.card(height='600px'):
+        ui.card_header("Chart with Current Trend")
 
-    @render_plotly
-    def display_plot():
-        # Fetch from the reactive calc function
-        deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+        @render_plotly
+        def display_plot():
+            # Fetch from the reactive calc function
+            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
 
-        # Ensure the DataFrame is not empty before plotting
-        if not df.empty:
-            # Convert the 'timestamp' column to datetime for better plotting
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-
-            # Create scatter plot for readings
-            # pass in the df, the name of the x column, the name of the y column,
-            # and more
+            # Ensure the DataFrame is not empty before plotting
+            if not df.empty:
+                # Convert the 'timestamp' column to datetime for better plotting
+                df["timestamp"] = pd.to_datetime(df["timestamp"])
         
-            fig = px.scatter(df,
-            x="timestamp",
-            y="temp_celsius",
-            title="Temperature Readings with Regression Line",
-            labels={"temp_celsius": "Temperature (°C)", "timestamp": "Time"},
-            color_discrete_sequence=["blue"] )
-            
-            # Linear regression - we need to get a list of the
-            # Independent variable x values (time) and the
-            # Dependent variable y values (temp)
-            # then, it's pretty easy using scipy.stats.linregress()
+                fig = px.scatter(df,
+                x="timestamp",
+                y="temp_celsius",
+                title="Temperature Readings with Regression Line",
+                labels={"temp_celsius": "Temperature (°C)", "timestamp": "Time"},
+                color_discrete_sequence=["blue"] )
 
-            # For x let's generate a sequence of integers from 0 to len(df)
-            sequence = range(len(df))
-            x_vals = list(sequence)
-            y_vals = df["temp_celsius"]
+                # For x let's generate a sequence of integers from 0 to len(df)
+                sequence = range(len(df))
+                x_vals = list(sequence)
+                y_vals = df["temp_celsius"]
 
-            slope, intercept, r_value, p_value, std_err = stats.linregress(x_vals, y_vals)
-            df['best_fit_line'] = [slope * x + intercept for x in x_vals]
+                slope, intercept, r_value, p_value, std_err = stats.linregress(x_vals, y_vals)
+                df['best_fit_line'] = [slope * x + intercept for x in x_vals]
 
-            # Add the regression line to the figure
-            fig.add_scatter(x=df["timestamp"], y=df['best_fit_line'], mode='lines', name='Regression Line')
+                # Add the regression line to the figure
+                fig.add_scatter(x=df["timestamp"], y=df['best_fit_line'], mode='lines', name='Regression Line')
 
-            # Update layout as needed to customize further
-            fig.update_layout(xaxis_title="Time", yaxis_title="Temperature (°C, °F, K)")
+                # Update layout as needed to customize further
+                fig.update_layout(xaxis_title="Time", yaxis_title="Temperature (°C, °F, K)")
 
-        return fig
+            return fig
