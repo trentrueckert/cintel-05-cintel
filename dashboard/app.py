@@ -130,7 +130,7 @@ with ui.navset_card_tab(id="tab"):
 
                 # Define the threshold temperature in Celsius (e.g., -17°C is the threshold for "warmer")
                 threshold = -17
-    
+
                 # Determine if the temperature is warmer than usual
                 if celsius > threshold:
                     temp_message = "It is warmer than usual"
@@ -172,7 +172,8 @@ with ui.navset_card_tab(id="tab"):
 
                 return render.DataGrid(df,width="100%")
 
-    with ui.nav_panel("Temperature Readings Plot")
+    with ui.nav_panel("Temperature Readings Plot"):
+        # The function and decorator should be indented correctly within the block
         @render_plotly
         def display_plot():
             # Fetch from the reactive calc function
@@ -182,16 +183,15 @@ with ui.navset_card_tab(id="tab"):
             if not df.empty:
                 # Convert the 'timestamp' column to datetime for better plotting
                 df["timestamp"] = pd.to_datetime(df["timestamp"])
-        
-                fig = px.scatter(df,
-                x="timestamp",
-                y="temp_celsius",
-                title="Temperature Readings with Regression Line",
-                height = 500,
-                labels={"temp_celsius": "Temperature (°C)", "timestamp": "Time"},
-                color_discrete_sequence=["blue"] )
 
-                # For x let's generate a sequence of integers from 0 to len(df)
+                fig = px.scatter(df,
+                                 x="timestamp",
+                                 y="temp_celsius",
+                                 title="Temperature Readings with Regression Line",
+                                 labels={"temp_celsius": "Temperature (°C)", "timestamp": "Time"},
+                                 color_discrete_sequence=["blue"])
+
+                # For x, let's generate a sequence of integers from 0 to len(df)
                 sequence = range(len(df))
                 x_vals = list(sequence)
                 y_vals = df["temp_celsius"]
@@ -206,7 +206,6 @@ with ui.navset_card_tab(id="tab"):
                 fig.update_layout(title="Temperature Readings with Regression Line",
                                   xaxis_title="Time", 
                                   yaxis_title="Temperature (°C, °F, K)",
-                                  height=500,  # Fixed height for the plot
                                   )
 
             return fig
